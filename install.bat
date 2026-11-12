@@ -20,7 +20,7 @@ if not exist ".venv\Scripts\python.exe" (
 echo Installing dependencies. An internet connection is required...
 ".venv\Scripts\python.exe" -m pip install --upgrade pip
 if errorlevel 1 goto failed
-".venv\Scripts\python.exe" -m pip install -r requirements-dev.txt
+".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 goto failed
 
 echo.
