@@ -79,6 +79,29 @@ def test_reject_invalid_docx():
         generate_documents(b"not a docx", pd.DataFrame({"name": ["Ivan"]}))
 
 
+def test_reject_template_over_unpacked_size_limit(monkeypatch):
+    monkeypatch.setattr(generator_module, "MAX_UNPACKED_ARCHIVE_BYTES", 1)
+    with pytest.raises(DocumentGenerationError, match="Распакованный размер шаблона"):
+        generate_documents(create_word_template(), pd.DataFrame({"name": ["Ada"]}))
+
+
+def test_reject_docx_with_corrupt_zip_member():
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_STORED) as archive:
+        archive.writestr("[Content_Types].xml", b"types")
+        archive.writestr("word/document.xml", b"document")
+    corrupt = bytearray(buffer.getvalue())
+    with zipfile.ZipFile(io.BytesIO(corrupt)) as archive:
+        offset = archive.getinfo("word/document.xml").header_offset
+    name_size = int.from_bytes(corrupt[offset + 26 : offset + 28], "little")
+    extra_size = int.from_bytes(corrupt[offset + 28 : offset + 30], "little")
+    payload_offset = offset + 30 + name_size + extra_size
+    corrupt[payload_offset] = ord("D")
+
+    with pytest.raises(DocumentGenerationError, match="DOCX-шаблон повреждён"):
+        generate_documents(bytes(corrupt), pd.DataFrame({"name": ["Ada"]}))
+
+
 def test_reserved_windows_names_are_safe():
     assert sanitize_filename("CON") == "_CON"
 
@@ -114,3 +137,23 @@ def test_generated_filenames_are_sanitized(value, expected):
     assert filenames == [expected]
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
         assert archive.namelist() == [expected]
+
+
+def test_filename_collisions_ignore_case():
+    _, filenames = generate_documents(
+        create_word_template(),
+        pd.DataFrame({"name": ["Ada", "ada"]}),
+        filename_column="name",
+    )
+
+    assert filenames == ["Ada.docx", "ada_2.docx"]
+
+
+def test_generated_filename_stem_is_limited_to_100_characters():
+    _, filenames = generate_documents(
+        create_word_template(),
+        pd.DataFrame({"name": ["x" * 120]}),
+        filename_column="name",
+    )
+
+    assert len(filenames[0].removesuffix(".docx")) == 100

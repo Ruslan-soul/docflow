@@ -4,6 +4,7 @@ import pytest
 from openpyxl import Workbook
 
 from app.config import MAX_UPLOAD_BYTES
+import app.reader as reader_module
 from app.reader import TableReadError, read_table
 
 
@@ -49,6 +50,23 @@ def test_read_xlsx():
     assert dataframe.iloc[0]["company"] == "Example LLC"
 
 
+def test_reject_corrupt_xlsx_container():
+    with pytest.raises(TableReadError, match="XLSX повреждён"):
+        read_table(FakeUpload("clients.xlsx", b"not a zip file"))
+
+
+def test_reject_xlsx_over_unpacked_size_limit(monkeypatch):
+    workbook = Workbook()
+    workbook.active.append(["name"])
+    workbook.active.append(["Ada"])
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    monkeypatch.setattr(reader_module, "MAX_UNPACKED_ARCHIVE_BYTES", 1)
+
+    with pytest.raises(TableReadError, match="Распакованный размер"):
+        read_table(FakeUpload("clients.xlsx", buffer.getvalue()))
+
+
 def test_reject_unsupported_file():
     with pytest.raises(TableReadError, match="Поддерживаются"):
         read_table(FakeUpload("clients.txt", b"some data"))
@@ -92,3 +110,11 @@ def test_whitespace_only_rows_are_ignored():
 def test_reject_table_with_only_whitespace_rows():
     with pytest.raises(TableReadError, match="не содержит заполненных строк"):
         read_table(FakeUpload("clients.csv", b"name,company\n  , \t\n"))
+
+
+def test_whitespace_rows_do_not_count_toward_row_limit():
+    content = "name,company\n" + "  ,  \n" * 501 + "Ada,Example\n"
+    dataframe = read_table(FakeUpload("clients.csv", content.encode()))
+
+    assert len(dataframe) == 1
+    assert dataframe.iloc[0]["name"] == "Ada"

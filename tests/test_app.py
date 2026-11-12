@@ -42,3 +42,28 @@ def test_streamlit_workflow_generates_downloadable_archive():
     assert len(downloads) == 1
     assert downloads[0].proto.url.startswith("/mock/media/")
     assert downloads[0].proto.url.endswith(".zip")
+
+
+def test_streamlit_disables_generation_when_template_variable_is_missing():
+    document = Document()
+    document.add_paragraph("Hello {{ missing }}")
+    buffer = io.BytesIO()
+    document.save(buffer)
+
+    app = AppTest.from_file(
+        Path(__file__).resolve().parents[1] / "app.py",
+        default_timeout=15,
+    ).run()
+    app.file_uploader[0].set_value(("clients.csv", b"name\nAda\n", "text/csv"))
+    app.file_uploader[1].set_value(
+        (
+            "template.docx",
+            buffer.getvalue(),
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+    )
+    app.run()
+
+    assert not app.exception
+    assert any("отсутствуют столбцы" in item.value for item in app.error)
+    assert app.button[0].disabled

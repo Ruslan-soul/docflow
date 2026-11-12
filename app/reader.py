@@ -103,11 +103,6 @@ def read_table(file) -> pd.DataFrame:
     df = df.dropna(how="all")
     if df.empty:
         raise TableReadError("Таблица не содержит заполненных строк.")
-    if len(df) > MAX_TABLE_ROWS:
-        raise TableReadError(
-            f"В таблице {len(df)} строк. Максимум — {MAX_TABLE_ROWS} строк за один запуск."
-        )
-
     df = df.apply(
         lambda column: column.map(
             lambda value: value.strip() if isinstance(value, str) else value
@@ -117,4 +112,8 @@ def read_table(file) -> pd.DataFrame:
     df = df.replace("", pd.NA).dropna(how="all")
     if df.empty:
         raise TableReadError("Таблица не содержит заполненных строк.")
+    if len(df) > MAX_TABLE_ROWS:
+        raise TableReadError(
+            f"В таблице {len(df)} строк. Максимум — {MAX_TABLE_ROWS} строк за один запуск."
+        )
     return df
