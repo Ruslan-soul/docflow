@@ -63,13 +63,19 @@ def read_table(file) -> pd.DataFrame:
                 ).delimiter
             except csv.Error:
                 delimiter = ","
-            raw = pd.read_csv(
-                BytesIO(content),
-                sep=delimiter,
-                engine="python",
-                encoding=encoding,
-                header=None,
-            )
+            try:
+                raw = pd.read_csv(
+                    BytesIO(content),
+                    sep=delimiter,
+                    engine="python",
+                    encoding=encoding,
+                    header=None,
+                    on_bad_lines="error",
+                )
+            except (pd.errors.ParserError, ValueError) as error:
+                raise TableReadError(
+                    "CSV имеет неверный формат: проверьте число столбцов и кавычки."
+                ) from error
         else:
             raw = pd.read_excel(buffer, header=None)
     except TableReadError:

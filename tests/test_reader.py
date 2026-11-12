@@ -36,6 +36,18 @@ def test_read_semicolon_csv_with_cp1251_encoding():
     assert dataframe.iloc[0]["company"] == "Пример"
 
 
+def test_read_csv_with_quoted_delimiter_and_multiline_value():
+    content = b'name;notes\nAda;"first line;\nsecond line"\n'
+    dataframe = read_table(FakeUpload("clients.csv", content))
+    assert dataframe.iloc[0]["name"] == "Ada"
+    assert dataframe.iloc[0]["notes"] == "first line;\nsecond line"
+
+
+def test_reject_csv_with_inconsistent_columns():
+    with pytest.raises(TableReadError, match="CSV имеет неверный формат"):
+        read_table(FakeUpload("clients.csv", b"name,company\nAda,Example,Extra\n"))
+
+
 def test_read_xlsx():
     workbook = Workbook()
     sheet = workbook.active

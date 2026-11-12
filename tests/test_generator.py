@@ -32,6 +32,7 @@ def test_generate_documents():
     assert filenames == ["Ivan.docx", "Petr.docx"]
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
         assert len(archive.namelist()) == 2
+        assert archive.testzip() is None
         first_document = Document(io.BytesIO(archive.read("Ivan.docx")))
         text = "\n".join(paragraph.text for paragraph in first_document.paragraphs)
         assert "Ivan" in text
@@ -147,6 +148,15 @@ def test_filename_collisions_ignore_case():
     )
 
     assert filenames == ["Ada.docx", "ada_2.docx"]
+
+
+def test_duplicate_sanitized_names_get_unique_names():
+    _, filenames = generate_documents(
+        create_word_template(),
+        pd.DataFrame({"name": ["../Ada", "..\\Ada"]}),
+        filename_column="name",
+    )
+    assert filenames == ["_Ada.docx", "_Ada_2.docx"]
 
 
 def test_generated_filename_stem_is_limited_to_100_characters():
