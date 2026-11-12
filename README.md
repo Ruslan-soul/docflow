@@ -26,12 +26,13 @@ python3.13 -m venv .venv
 Те же действия можно выполнить в PowerShell из папки проекта:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -v
-.\.venv\Scripts\python.exe -m compileall -q app.py app tests create_demo.py
+$env:PYTHONDONTWRITEBYTECODE = "1"
+.\.venv\Scripts\python.exe -m pytest -p no:cacheprovider -v
+.\.venv\Scripts\python.exe scripts\check_syntax.py
 .\.venv\Scripts\python.exe -m pip check
 ```
 
-На Linux или macOS замени путь к интерпретатору в командах выше на `.venv/bin/python`.
+На Linux или macOS используй `.venv/bin/python` и перед pytest установи `PYTHONDONTWRITEBYTECODE=1`.
 
 ## Проверка на демонстрационных файлах
 
@@ -84,3 +85,4 @@ requirements-dev.txt      зависимости приложения и тес�
 ## Приватность
 
 Файлы обрабатываются локальным процессом DocFlow. Используй демонстрационные данные или данные, которые разрешено обрабатывать. Любой, у кого есть доступ к компьютеру и открытому адресу приложения, может пользоваться приложением: в текущей версии нет входа по паролю.
+
